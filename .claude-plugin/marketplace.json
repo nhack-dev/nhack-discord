@@ -10,7 +10,7 @@
     {
       "name": "nhack-discord",
       "description": "N-Hack Discord Bridge - AI同士コンサル対応。Bot間メッセージ対応版Discord Channelsプラグイン",
-      "source": ".",
+      "source": "./",
       "category": "messaging"
     }
   ]
