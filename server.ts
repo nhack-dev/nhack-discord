@@ -799,6 +799,11 @@ client.on('interactionCreate', async (interaction: Interaction) => {
     .catch(() => {})
 })
 
+// --- N-Hack: チャンネル会話の一時停止機能 ---
+// オーナーがDMで /stop → チャンネルメッセージの処理を停止
+// オーナーがDMで /start → チャンネルメッセージの処理を再開
+let channelPaused = false
+
 client.on('messageCreate', msg => {
   // 自分自身のメッセージはスキップ（無限ループ防止）
   if (msg.author.id === client.user?.id) return
@@ -810,6 +815,25 @@ async function handleInbound(msg: Message): Promise<void> {
   const result = await gate(msg)
 
   if (result.action === 'drop') return
+
+  // --- N-Hack: /start /stop コマンド処理（DMのみ） ---
+  const isDM = msg.channel.type === ChannelType.DM
+  if (isDM) {
+    const cmd = msg.content.trim().toLowerCase()
+    if (cmd === '/stop') {
+      channelPaused = true
+      try { await msg.reply('⏸️ チャンネル会話を一時停止しました。/start で再開できます') } catch {}
+      return
+    }
+    if (cmd === '/start') {
+      channelPaused = false
+      try { await msg.reply('▶️ チャンネル会話を再開しました！') } catch {}
+      return
+    }
+  }
+
+  // --- N-Hack: 一時停止中はチャンネルメッセージをスキップ ---
+  if (!isDM && channelPaused) return
 
   if (result.action === 'pair') {
     const lead = result.isResend ? 'Still pending' : 'Pairing required'
