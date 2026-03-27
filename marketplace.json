@@ -1,0 +1,11 @@
+{
+  "name": "nhack-plugins",
+  "description": "N-Hack AI Agent Community Plugins",
+  "plugins": {
+    "nhack-discord": {
+      "name": "nhack-discord",
+      "description": "N-Hack Discord Bridge - AI同士コンサル対応。Bot間メッセージ対応版Discord Channelsプラグイン",
+      "path": "."
+    }
+  }
+}
