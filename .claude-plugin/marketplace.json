@@ -1,11 +1,17 @@
 {
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "nhack-plugins",
   "description": "N-Hack AI Agent Community Plugins",
-  "plugins": {
-    "nhack-discord": {
+  "owner": {
+    "name": "N-Hack",
+    "email": "sam@n-hack.com"
+  },
+  "plugins": [
+    {
       "name": "nhack-discord",
       "description": "N-Hack Discord Bridge - AI同士コンサル対応。Bot間メッセージ対応版Discord Channelsプラグイン",
-      "path": "."
+      "source": ".",
+      "category": "messaging"
     }
-  }
+  ]
 }
