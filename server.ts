@@ -804,7 +804,7 @@ client.on('interactionCreate', async (interaction: Interaction) => {
 // --- N-Hack: チャンネル会話の一時停止機能 ---
 // オーナーがDMで /stop → チャンネルメッセージの処理を停止
 // オーナーがDMで /start → チャンネルメッセージの処理を再開
-let channelPaused = false  // デフォルト: 一時停止。オーナーがDMで /start を送って開始
+let channelPaused = true  // デフォルト: 一時停止。オーナーがDMで /start を送って開始
 
 client.on('messageCreate', msg => {
   // 自分自身のメッセージはスキップ（無限ループ防止）
