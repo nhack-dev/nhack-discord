@@ -1,10 +1,12 @@
 {
   "mcpServers": {
     "nhack-discord": {
-      "command": "/bin/zsh",
+      "command": "bun",
       "args": [
-        "-lc",
-        "cd ${CLAUDE_PLUGIN_ROOT} && bun run start"
+        "run",
+        "--cwd",
+        "${CLAUDE_PLUGIN_ROOT}",
+        "start"
       ]
     }
   }
