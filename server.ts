@@ -279,7 +279,9 @@ async function gate(msg: Message): Promise<GateResult> {
     ? msg.channel.parentId ?? msg.channelId
     : msg.channelId
   const policy = access.groups[channelId]
-  if (!policy) return { action: 'drop' }
+  // N-Hack: groupsが空の場合は全チャンネル通過（group add不要）
+  if (!policy && Object.keys(access.groups).length > 0) return { action: 'drop' }
+  if (!policy) return { action: 'deliver', access } // groups空 = 全チャンネル許可
   const groupAllowFrom = policy.allowFrom ?? []
   const requireMention = policy.requireMention ?? true
   if (groupAllowFrom.length > 0 && !groupAllowFrom.includes(senderId)) {
@@ -802,7 +804,7 @@ client.on('interactionCreate', async (interaction: Interaction) => {
 // --- N-Hack: チャンネル会話の一時停止機能 ---
 // オーナーがDMで /stop → チャンネルメッセージの処理を停止
 // オーナーがDMで /start → チャンネルメッセージの処理を再開
-let channelPaused = true  // デフォルト: 一時停止。オーナーがDMで /start を送って開始
+let channelPaused = false  // デフォルト: 一時停止。オーナーがDMで /start を送って開始
 
 client.on('messageCreate', msg => {
   // 自分自身のメッセージはスキップ（無限ループ防止）
