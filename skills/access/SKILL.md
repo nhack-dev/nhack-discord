@@ -1,15 +1,12 @@
 ---
 name: access
-description: Manage Discord channel access — approve pairings, edit allowlists, set
-  DM/group policy. Use when the user asks to pair, approve someone, check who's allowed,
-  or change policy for the Discord channel.
+description: Manage Discord channel access — approve pairings, edit allowlists, set DM/group policy. Use when the user asks to pair, approve someone, check who's allowed, or change policy for the Discord channel.
 user-invocable: true
 allowed-tools:
-- Read
-- Write
-- Bash(ls *)
-- Bash(mkdir *)
-permalink: rin/templates/discord-bridge/skills/access/skill
+  - Read
+  - Write
+  - Bash(ls *)
+  - Bash(mkdir *)
 ---
 
 # /nhack-discord:access — Discord Channel Access Management
