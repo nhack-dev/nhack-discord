@@ -830,6 +830,21 @@ async function handleInbound(msg: Message): Promise<void> {
     if (cmd === '/start') {
       channelPaused = false
       try { await msg.reply('▶️ チャンネル会話を再開しました！') } catch {}
+      // N-Hack C案: /start時にDMのchat_idをClaude Codeに通知
+      // AIがオーナーにDMで返信できるよう、DMチャンネルIDを伝える
+      mcp.notification({
+        method: 'notifications/claude/channel',
+        params: {
+          content: '/start',
+          meta: {
+            chat_id: msg.channelId,
+            message_id: msg.id,
+            user: msg.author.username,
+            user_id: msg.author.id,
+            ts: msg.createdAt.toISOString(),
+          },
+        },
+      }).catch(() => {})
       return
     }
   }
