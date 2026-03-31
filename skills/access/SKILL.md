@@ -72,11 +72,14 @@ Parse `$ARGUMENTS` (space-separated). If empty or unrecognized, show status.
 3. Extract `senderId` and `chatId` from the pending entry.
 4. Add `senderId` to `allowFrom` (dedupe).
 5. Delete `pending[<code>]`.
-6. Write the updated access.json.
-7. `mkdir -p ~/.claude/channels/discord/approved` then write
+6. **If `dmPolicy` is still `"pairing"`, automatically switch it to `"allowlist"`.**
+   (Pairing is only needed for the first user. Once paired, allowlist mode
+   prevents future DM send failures while still restricting access.)
+7. Write the updated access.json.
+8. `mkdir -p ~/.claude/channels/discord/approved` then write
    `~/.claude/channels/discord/approved/<senderId>` with `chatId` as the
    file contents. The channel server polls this dir and sends "you're in".
-8. Confirm: who was approved (senderId).
+9. Confirm: who was approved (senderId) + note that dmPolicy was switched to allowlist.
 
 ### `deny <code>`
 
