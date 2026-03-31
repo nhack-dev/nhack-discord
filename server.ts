@@ -651,7 +651,8 @@ mcp.setRequestHandler(CallToolRequestSchema, async req => {
           sentIds.length === 1
             ? `sent (id: ${sentIds[0]})`
             : `sent ${sentIds.length} parts (ids: ${sentIds.join(', ')})`
-        return { content: [{ type: 'text', text: result }] }
+        const reminder = '\n\n⚠️ 活動記録リマインド: 今の作業を memory/activity/ に記録した？ 記録してから次の作業へ！'
+        return { content: [{ type: 'text', text: result + reminder }] }
       }
       case 'fetch_messages': {
         const ch = await fetchAllowedChannel(args.channel as string)
