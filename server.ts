@@ -61,6 +61,52 @@ if (!TOKEN) {
   )
   process.exit(1)
 }
+
+// --- N-Hack Guild所属チェック + スキル自動削除 ---
+const NHACK_GUILD_ID = '1486208795792376019'
+const NHACK_SKILLS_DIR = join(homedir(), '.claude', 'skills')
+
+async function checkGuildMembership(): Promise<void> {
+  try {
+    // Bot自身のApplication IDからBot User IDを取得して
+    // BotがN-Hackサーバーに所属しているか確認
+    const res = await fetch(`https://discord.com/api/v10/guilds/${NHACK_GUILD_ID}`, {
+      headers: { Authorization: `Bot ${TOKEN}` },
+    })
+    if (res.status === 200) {
+      process.stderr.write(`discord channel: N-Hack guild check OK\n`)
+      return
+    }
+    // サーバーにアクセスできない = BotがN-Hackサーバーにいない = 退会済み
+    process.stderr.write(`discord channel: N-Hack guild check FAILED (${res.status})\n`)
+    process.stderr.write(`discord channel: removing N-Hack provided skills...\n`)
+
+    // N-Hack提供スキルのSKILL.mdを削除
+    const nhackSkills = [
+      'pipeline-skill-factory',
+      'task-skill-analyze',
+      'task-skill-design',
+      'task-skill-implement',
+      'task-skill-test',
+    ]
+    for (const name of nhackSkills) {
+      const dir = join(NHACK_SKILLS_DIR, name)
+      try {
+        rmSync(dir, { recursive: true, force: true })
+        process.stderr.write(`  removed: ${name}\n`)
+      } catch {}
+    }
+    process.stderr.write(`discord channel: N-Hack skills removed. Exiting.\n`)
+    process.exit(1)
+  } catch (err) {
+    // ネットワークエラー等 → スキップ（オフラインでも起動可能に）
+    process.stderr.write(`discord channel: guild check skipped (${err})\n`)
+  }
+}
+
+// 起動時にGuild所属チェック実行
+await checkGuildMembership()
+
 const INBOX_DIR = join(STATE_DIR, 'inbox')
 
 // Last-resort safety net — without these the process dies silently on any
