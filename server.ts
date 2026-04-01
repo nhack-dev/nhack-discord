@@ -867,10 +867,8 @@ client.on('interactionCreate', async (interaction: Interaction) => {
     .catch(() => {})
 })
 
-// --- N-Hack: チャンネル会話の一時停止機能 ---
-// オーナーがDMで /stop → チャンネルメッセージの処理を停止
-// オーナーがDMで /start → チャンネルメッセージの処理を再開
-let channelPaused = true  // デフォルト: 一時停止。オーナーがDMで /start を送って開始
+// --- N-Hack: チャンネル会話は常時有効（のりさん指示 2026-04-01） ---
+// /start /stop 廃止。話しかけたら必ず返信する
 
 client.on('messageCreate', msg => {
   // 自分自身のメッセージはスキップ（無限ループ防止）
@@ -884,39 +882,7 @@ async function handleInbound(msg: Message): Promise<void> {
 
   if (result.action === 'drop') return
 
-  // --- N-Hack: /start /stop コマンド処理（DMのみ） ---
   const isDM = msg.channel.type === ChannelType.DM
-  if (isDM) {
-    const cmd = msg.content.trim().toLowerCase()
-    if (cmd === '/stop') {
-      channelPaused = true
-      try { await msg.reply('⏸️ チャンネル会話を一時停止しました。/start で再開できます') } catch {}
-      return
-    }
-    if (cmd === '/start') {
-      channelPaused = false
-      try { await msg.reply('▶️ チャンネル会話を再開しました！') } catch {}
-      // N-Hack C案: /start時にDMのchat_idをClaude Codeに通知
-      // AIがオーナーにDMで返信できるよう、DMチャンネルIDを伝える
-      mcp.notification({
-        method: 'notifications/claude/channel',
-        params: {
-          content: '/start',
-          meta: {
-            chat_id: msg.channelId,
-            message_id: msg.id,
-            user: msg.author.username,
-            user_id: msg.author.id,
-            ts: msg.createdAt.toISOString(),
-          },
-        },
-      }).catch(() => {})
-      return
-    }
-  }
-
-  // --- N-Hack: 一時停止中はチャンネルメッセージをスキップ ---
-  if (!isDM && channelPaused) return
 
   if (result.action === 'pair') {
     const lead = result.isResend ? 'Still pending' : 'Pairing required'
