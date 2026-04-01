@@ -154,6 +154,8 @@ type Access = {
   /** Keyed on channel ID (snowflake), not guild ID. One entry per guild channel. */
   groups: Record<string, GroupPolicy>
   pending: Record<string, PendingEntry>
+  /** Maps user ID → DM channel ID. Persisted so AI can initiate DMs without waiting for inbound. */
+  dmChannels?: Record<string, string>
   mentionPatterns?: string[]
   // delivery/UX config — optional, defaults live in the reply handler
   /** Emoji to react with on receipt. Empty string disables. Unicode char or custom emoji ID. */
@@ -203,6 +205,7 @@ function readAccessFile(): Access {
       allowFrom: parsed.allowFrom ?? [],
       groups: parsed.groups ?? {},
       pending: parsed.pending ?? {},
+      dmChannels: parsed.dmChannels,
       mentionPatterns: parsed.mentionPatterns,
       ackReaction: parsed.ackReaction,
       replyToMode: parsed.replyToMode,
@@ -288,21 +291,29 @@ async function gate(msg: Message): Promise<GateResult> {
   const isDM = msg.channel.type === ChannelType.DM
 
   if (isDM) {
-    if (access.allowFrom.includes(senderId)) return { action: 'deliver', access }
+    if (access.allowFrom.includes(senderId)) {
+      // Persist DM channel ID so AI can initiate DMs later
+      if (!access.dmChannels) access.dmChannels = {}
+      if (access.dmChannels[senderId] !== msg.channelId) {
+        access.dmChannels[senderId] = msg.channelId
+        saveAccess(access)
+      }
+      return { action: 'deliver', access }
+    }
     if (access.dmPolicy === 'allowlist') return { action: 'drop' }
 
     // pairing mode — check for existing non-expired code for this sender
     for (const [code, p] of Object.entries(access.pending)) {
       if (p.senderId === senderId) {
-        // Reply twice max (initial + one reminder), then go silent.
-        if ((p.replies ?? 1) >= 2) return { action: 'drop' }
+        // Reply up to 5 times (was 2 — too aggressive, users thought bot was ignoring them)
+        if ((p.replies ?? 1) >= 5) return { action: 'drop' }
         p.replies = (p.replies ?? 1) + 1
         saveAccess(access)
         return { action: 'pair', code, isResend: true }
       }
     }
-    // Cap pending at 3. Extra attempts are silently dropped.
-    if (Object.keys(access.pending).length >= 3) return { action: 'drop' }
+    // Cap pending at 10 (was 3 — too low for multi-client setups).
+    if (Object.keys(access.pending).length >= 10) return { action: 'drop' }
 
     const code = randomBytes(3).toString('hex') // 6 hex chars
     const now = Date.now()
@@ -453,8 +464,16 @@ async function fetchAllowedChannel(id: string) {
   const access = loadAccess()
   if (ch.type === ChannelType.DM) {
     if (access.allowFrom.includes(ch.recipientId)) return ch
+    // Also allow if this DM channel is in our persisted dmChannels map
+    if (access.dmChannels) {
+      for (const [, chId] of Object.entries(access.dmChannels)) {
+        if (chId === id) return ch
+      }
+    }
   } else {
     const key = ch.isThread() ? ch.parentId ?? ch.id : ch.id
+    // N-Hack: groups空なら全チャンネル許可（inbound gateと同じロジック）
+    if (Object.keys(access.groups).length === 0) return ch
     if (key in access.groups) return ch
   }
   throw new Error(`channel ${id} is not allowlisted — add via /nhack-discord:access`)
