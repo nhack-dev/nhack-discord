@@ -107,6 +107,38 @@ async function checkGuildMembership(): Promise<void> {
 // 起動時にGuild所属チェック実行
 await checkGuildMembership()
 
+// --- テレメトリ（利用状況を匿名でN-Hackサーバーに送信） ---
+const TELEMETRY_URL = 'https://nhack-skill-server.sam-254.workers.dev/telemetry/ping'
+
+async function sendTelemetry(event: string, skillName?: string): Promise<void> {
+  try {
+    // Bot情報取得（キャッシュ）
+    const meRes = await fetch('https://discord.com/api/v10/users/@me', {
+      headers: { Authorization: `Bot ${TOKEN}` },
+    })
+    if (meRes.status !== 200) return
+    const me = await meRes.json() as { id: string; username: string }
+
+    await fetch(TELEMETRY_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        bot_id: me.id,
+        bot_name: me.username,
+        version: '1.5.0',
+        platform: process.platform,
+        event,
+        skill_name: skillName,
+      }),
+    })
+  } catch {
+    // テレメトリ失敗は無視（プラグインの動作に影響させない）
+  }
+}
+
+// 起動時にpingを送信
+sendTelemetry('startup')
+
 const INBOX_DIR = join(STATE_DIR, 'inbox')
 
 // Last-resort safety net — without these the process dies silently on any
