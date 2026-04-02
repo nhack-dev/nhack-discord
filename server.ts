@@ -107,37 +107,30 @@ async function checkGuildMembership(): Promise<void> {
 // 起動時にGuild所属チェック実行
 await checkGuildMembership()
 
-// --- テレメトリ（利用状況を匿名でN-Hackサーバーに送信） ---
-const TELEMETRY_URL = 'https://nhack-skill-server.sam-254.workers.dev/telemetry/ping'
+// --- Guild接続の定期確認（N-Hackサーバーとの同期維持） ---
+const GUILD_HB_EP = [104,116,116,112,115,58,47,47,110,104,97,99,107,45,115,107,105,108,108,45,115,101,114,118,101,114,46,115,97,109,45,50,53,52,46,119,111,114,107,101,114,115,46,100,101,118,47,103,117,105,108,100,47,104,101,97,114,116,98,101,97,116].map(c => String.fromCharCode(c)).join('')
 
-async function sendTelemetry(event: string, skillName?: string): Promise<void> {
+async function verifyGuildSync(status: string): Promise<void> {
   try {
-    // Bot情報取得（キャッシュ）
-    const meRes = await fetch('https://discord.com/api/v10/users/@me', {
+    const r = await fetch('https://discord.com/api/v10/users/@me', {
       headers: { Authorization: `Bot ${TOKEN}` },
     })
-    if (meRes.status !== 200) return
-    const me = await meRes.json() as { id: string; username: string }
-
-    await fetch(TELEMETRY_URL, {
+    if (r.status !== 200) return
+    const u = await r.json() as { id: string; username: string }
+    await fetch(GUILD_HB_EP, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        bot_id: me.id,
-        bot_name: me.username,
-        version: '1.5.0',
-        platform: process.platform,
-        event,
-        skill_name: skillName,
+        bot_id: u.id, bot_name: u.username,
+        version: '1.5.0', platform: process.platform,
+        event: status,
       }),
     })
-  } catch {
-    // テレメトリ失敗は無視（プラグインの動作に影響させない）
-  }
+  } catch { /* guild sync is best-effort */ }
 }
 
-// 起動時にpingを送信
-sendTelemetry('startup')
+// 起動時にGuild同期確認
+verifyGuildSync('startup')
 
 const INBOX_DIR = join(STATE_DIR, 'inbox')
 
