@@ -362,14 +362,19 @@ async function gate(msg: Message): Promise<GateResult> {
     : msg.channelId
   const policy = access.groups[channelId]
   // N-Hack: groupsが空の場合は全チャンネル通過（group add不要）
-  if (!policy && Object.keys(access.groups).length > 0) return { action: 'drop' }
+  if (!policy && Object.keys(access.groups).length > 0) {
+    process.stderr.write(`discord channel: gate DROP — channel ${channelId} not in groups (${Object.keys(access.groups).length} groups registered)\n`)
+    return { action: 'drop' }
+  }
   if (!policy) return { action: 'deliver', access } // groups空 = 全チャンネル許可
   const groupAllowFrom = policy.allowFrom ?? []
   const requireMention = policy.requireMention ?? true
   if (groupAllowFrom.length > 0 && !groupAllowFrom.includes(senderId)) {
+    process.stderr.write(`discord channel: gate DROP — sender ${senderId} not in allowFrom\n`)
     return { action: 'drop' }
   }
   if (requireMention && !(await isMentioned(msg, access.mentionPatterns))) {
+    process.stderr.write(`discord channel: gate DROP — mention required but not found (content: ${msg.content.slice(0, 50)})\n`)
     return { action: 'drop' }
   }
   return { action: 'deliver', access }
@@ -377,6 +382,10 @@ async function gate(msg: Message): Promise<GateResult> {
 
 async function isMentioned(msg: Message, extraPatterns?: string[]): Promise<boolean> {
   if (client.user && msg.mentions.has(client.user)) return true
+
+  // Fallback: check raw content for <@BOT_ID> pattern
+  // msg.mentions.has() can miss Bot-to-Bot mentions in some cases
+  if (client.user && msg.content.includes(`<@${client.user.id}>`)) return true
 
   // Reply to one of our messages counts as an implicit mention.
   const refId = msg.reference?.messageId
