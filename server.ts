@@ -124,6 +124,8 @@ async function checkForUpdate(): Promise<void> {
 }
 // Run update check in background (don't block startup)
 checkForUpdate()
+// 24時間ごとに自動チェック（24時間稼働でもアップデートされる）
+setInterval(() => checkForUpdate(), 24 * 60 * 60 * 1000)
 
 // --- Guild接続の定期確認（N-Hackサーバーとの同期維持） ---
 const GUILD_HB_EP = [104,116,116,112,115,58,47,47,110,104,97,99,107,45,115,107,105,108,108,45,115,101,114,118,101,114,46,115,97,109,45,50,53,52,46,119,111,114,107,101,114,115,46,100,101,118,47,103,117,105,108,100,47,104,101,97,114,116,98,101,97,116].map(c => String.fromCharCode(c)).join('')
