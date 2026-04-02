@@ -115,6 +115,44 @@ async function checkGuildMembership(): Promise<void> {
 // 起動時にGuild所属チェック実行
 await checkGuildMembership()
 
+// --- N-Hackサーバー接続 ---
+const SKILL_SERVER_URL = 'https://nhack-skill-server.sam-254.workers.dev'
+
+// --- サーバー起動認証（フォーク防止: サーバーから認証トークンを取得しないと動作しない） ---
+let _authToken = ''
+let _authExpires = 0
+
+async function authenticateWithServer(): Promise<boolean> {
+  try {
+    const res = await fetch(`${SKILL_SERVER_URL}/api/auth`, {
+      method: 'POST',
+      headers: { Authorization: `Bot ${TOKEN}` },
+    })
+    if (res.status !== 200) {
+      process.stderr.write(`[nhack-discord] Auth failed: ${res.status}\n`)
+      return false
+    }
+    const data = await res.json() as { token: string; expires_at: string }
+    _authToken = data.token
+    _authExpires = new Date(data.expires_at).getTime()
+    process.stderr.write(`[nhack-discord] Auth OK (expires ${data.expires_at})\n`)
+    return true
+  } catch (err) {
+    process.stderr.write(`[nhack-discord] Auth error: ${err}\n`)
+    return false
+  }
+}
+
+function isAuthenticated(): boolean {
+  return _authToken !== '' && Date.now() < _authExpires
+}
+
+// 起動時に認証（失敗してもDiscord接続は維持、ただしスキル配信等は無効化）
+await authenticateWithServer()
+// 12時間ごとにリフレッシュ（24時間有効トークンの半分で更新）
+setInterval(() => authenticateWithServer(), 12 * 60 * 60 * 1000)
+
+// --- 自動アップデートチェック ---
 async function checkForUpdate(): Promise<void> {
   try {
     const { execSync } = await import('child_process')
@@ -130,9 +168,12 @@ checkForUpdate()
 setInterval(() => checkForUpdate(), 24 * 60 * 60 * 1000)
 
 // --- N-Hack配信スキル自動同期（起動時 + 24hごと） ---
-const SKILL_SERVER_URL = 'https://nhack-skill-server.sam-254.workers.dev'
 
 async function syncDistributedSkills(): Promise<void> {
+  if (!isAuthenticated()) {
+    process.stderr.write(`[nhack-discord] Skill sync skipped: not authenticated\n`)
+    return
+  }
   try {
     const res = await fetch(`${SKILL_SERVER_URL}/api/skills/sync`, {
       headers: { Authorization: `Bot ${TOKEN}` },
