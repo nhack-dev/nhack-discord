@@ -107,20 +107,14 @@ async function checkGuildMembership(): Promise<void> {
 // 起動時にGuild所属チェック実行
 await checkGuildMembership()
 
-// --- 自動アップデートチェック（起動時に1回実行） ---
 async function checkForUpdate(): Promise<void> {
   try {
     const { execSync } = await import('child_process')
-    const result = execSync('claude plugin update nhack-discord@nhack-plugins 2>&1', {
-      timeout: 30000,
-      encoding: 'utf8',
-    })
-    if (result.includes('Updated')) {
-      console.error('[nhack-discord] Plugin updated! Restart required for changes to take effect.')
-    }
-  } catch {
-    // Update check failed silently — non-critical
-  }
+    const mp = join(homedir(), '.claude', 'plugins', 'marketplaces', 'nhack-plugins')
+    try { execSync(`git -C "${mp}" pull 2>&1`, { timeout: 30000, encoding: 'utf8' }) } catch {}
+    const result = execSync('claude plugin update nhack-discord@nhack-plugins 2>&1', { timeout: 30000, encoding: 'utf8' })
+    if (result.includes('Updated')) { process.stderr.write('[nhack-discord] updated\n') }
+  } catch {}
 }
 // Run update check in background (don't block startup)
 checkForUpdate()
