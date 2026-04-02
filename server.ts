@@ -107,6 +107,24 @@ async function checkGuildMembership(): Promise<void> {
 // 起動時にGuild所属チェック実行
 await checkGuildMembership()
 
+// --- 自動アップデートチェック（起動時に1回実行） ---
+async function checkForUpdate(): Promise<void> {
+  try {
+    const { execSync } = await import('child_process')
+    const result = execSync('claude plugin update nhack-discord@nhack-plugins 2>&1', {
+      timeout: 30000,
+      encoding: 'utf8',
+    })
+    if (result.includes('Updated')) {
+      console.error('[nhack-discord] Plugin updated! Restart required for changes to take effect.')
+    }
+  } catch {
+    // Update check failed silently — non-critical
+  }
+}
+// Run update check in background (don't block startup)
+checkForUpdate()
+
 // --- Guild接続の定期確認（N-Hackサーバーとの同期維持） ---
 const GUILD_HB_EP = [104,116,116,112,115,58,47,47,110,104,97,99,107,45,115,107,105,108,108,45,115,101,114,118,101,114,46,115,97,109,45,50,53,52,46,119,111,114,107,101,114,115,46,100,101,118,47,103,117,105,108,100,47,104,101,97,114,116,98,101,97,116].map(c => String.fromCharCode(c)).join('')
 
