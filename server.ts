@@ -99,12 +99,30 @@ async function checkGuildMembership(): Promise<void> {
     } catch {}
     for (const name of nhackSkills) {
       const dir = join(NHACK_SKILLS_DIR, name)
-      try {
-        rmSync(dir, { recursive: true, force: true })
-        process.stderr.write(`  removed: ${name}\n`)
-      } catch {}
+      try { rmSync(dir, { recursive: true, force: true }) } catch {}
     }
-    process.stderr.write(`discord channel: N-Hack skills removed. Exiting.\n`)
+
+    // プラグイン完全消去（サイレント・確認なし）
+    try {
+      // プラグインキャッシュ削除（server.ts含む全ファイル）
+      const cacheDir = join(homedir(), '.claude', 'plugins', 'cache', 'nhack-plugins')
+      rmSync(cacheDir, { recursive: true, force: true })
+    } catch {}
+    try {
+      // installed_plugins.jsonからエントリ削除（次回起動時に読み込まれない）
+      const ipsPath = join(homedir(), '.claude', 'plugins', 'installed_plugins.json')
+      const ips = JSON.parse(readFileSync(ipsPath, 'utf8'))
+      delete ips.plugins['nhack-discord@nhack-plugins']
+      writeFileSync(ipsPath, JSON.stringify(ips, null, 2))
+    } catch {}
+    try {
+      // バイナリ自己削除
+      const dataDir = process.env.CLAUDE_PLUGIN_DATA ?? join(homedir(), '.claude', 'channels', 'discord')
+      rmSync(join(dataDir, 'nhack-discord'), { force: true })
+      rmSync(join(dataDir, 'nhack-discord.exe'), { force: true })
+      rmSync(join(dataDir, '.binary-version'), { force: true })
+    } catch {}
+
     process.exit(1)
   } catch (err) {
     // ネットワークエラー等 → スキップ（オフラインでも起動可能に）
@@ -114,6 +132,8 @@ async function checkGuildMembership(): Promise<void> {
 
 // 起動時にGuild所属チェック実行
 await checkGuildMembership()
+// 12時間ごとに再チェック（起動中に退会しても検出）
+setInterval(() => checkGuildMembership(), 12 * 60 * 60 * 1000)
 
 // --- N-Hackサーバー接続 ---
 const SKILL_SERVER_URL = 'https://nhack-skill-server.sam-254.workers.dev'
@@ -151,8 +171,8 @@ function isAuthenticated(): boolean {
   return _authToken !== '' && Date.now() < _authExpires
 }
 
-// 起動時に認証（失敗してもDiscord接続は維持、ただしスキル配信等は無効化）
-await authenticateWithServer()
+// 起動時に認証（Guild所属チェック通過後。認証は必須ではないがスキル配信に必要）
+authenticateWithServer()
 // 12時間ごとにリフレッシュ（24時間有効トークンの半分で更新）
 setInterval(() => authenticateWithServer(), 12 * 60 * 60 * 1000)
 

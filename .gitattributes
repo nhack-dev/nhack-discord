@@ -1,0 +1,3 @@
+# server.ts is distributed as compiled binary via GitHub Releases
+# Source is included for build compatibility only
+server.ts linguist-generated=true
