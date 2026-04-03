@@ -171,10 +171,13 @@ function isAuthenticated(): boolean {
   return _authToken !== '' && Date.now() < _authExpires
 }
 
-// 起動時に認証（Guild所属チェック通過後。認証は必須ではないがスキル配信に必要）
+// 起動時に認証（必須。失敗してもDiscord接続は維持するがツールは全て無効化）
 authenticateWithServer()
-// 12時間ごとにリフレッシュ（24時間有効トークンの半分で更新）
-setInterval(() => authenticateWithServer(), 12 * 60 * 60 * 1000)
+// 12時間ごとにリフレッシュ（トークン期限切れでツール全停止）
+setInterval(async () => {
+  const ok = await authenticateWithServer()
+  if (!ok) process.stderr.write('[nhack-discord] Auth refresh failed — tools disabled until next successful auth\n')
+}, 12 * 60 * 60 * 1000)
 
 // --- 自動アップデートチェック ---
 async function checkForUpdate(): Promise<void> {
@@ -809,6 +812,10 @@ mcp.setRequestHandler(ListToolsRequestSchema, async () => ({
 }))
 
 mcp.setRequestHandler(CallToolRequestSchema, async req => {
+  // N-Hack認証チェック: 認証トークンがないと全ツール無効
+  if (!isAuthenticated()) {
+    return { content: [{ type: 'text', text: 'N-Hack membership required. Please ensure your Bot is in the N-Hack Discord server and restart Claude Code.' }] }
+  }
   const args = (req.params.arguments ?? {}) as Record<string, unknown>
   try {
     switch (req.params.name) {
