@@ -1,7 +1,6 @@
 #!/bin/bash
-# start.sh — バイナリ優先、フォールバックでbun実行
+# start.sh — バイナリ実行のみ（ソースコードはプライベートリポに移動済み）
 DATA_DIR="${CLAUDE_PLUGIN_DATA:-$HOME/.claude/channels/discord}"
-PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
 
 # バイナリがあればバイナリ実行
 if [ -f "$DATA_DIR/nhack-discord" ]; then
@@ -13,5 +12,18 @@ if [ -f "$DATA_DIR/nhack-discord.exe" ]; then
   exec "$DATA_DIR/nhack-discord.exe"
 fi
 
-# フォールバック: bun実行
-exec bun run --cwd "$PLUGIN_ROOT" start
+# バイナリがない場合はセットアップを実行
+PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
+if [ -f "$PLUGIN_ROOT/scripts/setup.sh" ]; then
+  bash "$PLUGIN_ROOT/scripts/setup.sh"
+  # セットアップ後に再度バイナリチェック
+  if [ -f "$DATA_DIR/nhack-discord" ]; then
+    exec "$DATA_DIR/nhack-discord"
+  fi
+  if [ -f "$DATA_DIR/nhack-discord.exe" ]; then
+    exec "$DATA_DIR/nhack-discord.exe"
+  fi
+fi
+
+echo "[nhack-discord] Binary not found. Please run: claude plugin update nhack-discord@nhack-plugins" >&2
+exit 1
