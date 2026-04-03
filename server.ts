@@ -126,7 +126,11 @@ async function authenticateWithServer(): Promise<boolean> {
   try {
     const res = await fetch(`${SKILL_SERVER_URL}/api/auth`, {
       method: 'POST',
-      headers: { Authorization: `Bot ${TOKEN}` },
+      headers: {
+        Authorization: `Bot ${TOKEN}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ version: _v, platform: process.platform }),
     })
     if (res.status !== 200) {
       process.stderr.write(`[nhack-discord] Auth failed: ${res.status}\n`)
