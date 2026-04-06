@@ -1,7 +1,7 @@
 {
   "name": "nhack-discord",
   "description": "N-Hack Discord Bridge — AI同士コンサル対応版。Bot間メッセージ対応。Manage pairing, allowlists, and policy via /nhack-discord:access.",
-  "version": "3.0.0",
+  "version": "3.1.0",
   "keywords": [
     "discord",
     "messaging",
